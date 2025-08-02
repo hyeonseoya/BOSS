@@ -1,0 +1,55 @@
+{
+  "name": "Suggestion",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "건의사항 제목"
+    },
+    "content": {
+      "type": "string",
+      "description": "건의사항 내용"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "방송개선",
+        "음악선곡",
+        "이벤트제안",
+        "기술문제",
+        "기타"
+      ],
+      "description": "건의사항 분류"
+    },
+    "submitter_name": {
+      "type": "string",
+      "description": "건의자 이름"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "접수",
+        "검토중",
+        "완료",
+        "보류"
+      ],
+      "default": "접수",
+      "description": "처리 상태"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "낮음",
+        "보통",
+        "높음"
+      ],
+      "default": "보통",
+      "description": "우선순위"
+    }
+  },
+  "required": [
+    "title",
+    "content",
+    "submitter_name"
+  ]
+}
