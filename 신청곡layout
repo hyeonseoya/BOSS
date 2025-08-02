@@ -16,7 +16,7 @@
     },
     "message": {
       "type": "string",
-      "description": "DJ에게 전하고 싶은 메시지"
+      "description": "방송부에게 전하고 싶은 메시지"
     },
     "status": {
       "type": "string",
