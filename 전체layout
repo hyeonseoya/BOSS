@@ -1,0 +1,168 @@
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { Music, MessageCircle, Settings, Radio } from "lucide-react";
+
+const navigationItems = [
+  {
+    title: "신청곡",
+    url: createPageUrl("SongRequests"),
+    icon: Music,
+  },
+  {
+    title: "건의사항",
+    url: createPageUrl("Suggestions"),
+    icon: MessageCircle,
+  },
+  {
+    title: "관리",
+    url: createPageUrl("Admin"),
+    icon: Settings,
+  },
+];
+
+export default function Layout({ children, currentPageName }) {
+  const location = useLocation();
+
+  return (
+    <div className="min-h-screen" style={{ backgroundColor: '#e0e0e0' }}>
+      <style>{`
+        :root {
+          --bg-primary: #e0e0e0;
+          --shadow-light: rgba(255, 255, 255, 0.9);
+          --shadow-dark: rgba(163, 177, 198, 0.6);
+          --text-primary: #333333;
+          --text-secondary: #666666;
+        }
+        
+        .neumorphic {
+          background: var(--bg-primary);
+          box-shadow: 
+            8px 8px 16px var(--shadow-dark),
+            -8px -8px 16px var(--shadow-light);
+          border: none;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .neumorphic-inset {
+          background: var(--bg-primary);
+          box-shadow: 
+            inset 6px 6px 12px var(--shadow-dark),
+            inset -6px -6px 12px var(--shadow-light);
+          border: none;
+        }
+        
+        .neumorphic-button {
+          background: var(--bg-primary);
+          box-shadow: 
+            6px 6px 12px var(--shadow-dark),
+            -6px -6px 12px var(--shadow-light);
+          border: none;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .neumorphic-button:hover {
+          box-shadow: 
+            8px 8px 16px var(--shadow-dark),
+            -8px -8px 16px var(--shadow-light);
+          transform: translateY(-1px);
+        }
+        
+        .neumorphic-button:active {
+          box-shadow: 
+            inset 4px 4px 8px var(--shadow-dark),
+            inset -4px -4px 8px var(--shadow-light);
+          transform: translateY(0);
+        }
+        
+        .neumorphic-nav-item {
+          background: var(--bg-primary);
+          box-shadow: 
+            4px 4px 8px var(--shadow-dark),
+            -4px -4px 8px var(--shadow-light);
+          transition: all 0.2s ease;
+        }
+        
+        .neumorphic-nav-item.active {
+          box-shadow: 
+            inset 3px 3px 6px var(--shadow-dark),
+            inset -3px -3px 6px var(--shadow-light);
+        }
+        
+        .neumorphic-input {
+          background: var(--bg-primary);
+          box-shadow: 
+            inset 4px 4px 8px var(--shadow-dark),
+            inset -4px -4px 8px var(--shadow-light);
+          border: none;
+          outline: none;
+        }
+        
+        .neumorphic-input:focus {
+          box-shadow: 
+            inset 6px 6px 12px var(--shadow-dark),
+            inset -6px -6px 12px var(--shadow-light);
+        }
+      `}</style>
+
+      {/* Header */}
+      <header className="neumorphic px-6 py-4 mb-8">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="neumorphic w-12 h-12 rounded-full flex items-center justify-center">
+              <Radio className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">잠신보스 라디오</h1>
+              <p className="text-sm text-gray-600">당신의 음악을 들려주세요</p>
+            </div>
+          </div>
+          
+          <nav className="hidden md:flex gap-2">
+            {navigationItems.map((item) => {
+              const isActive = location.pathname === item.url;
+              return (
+                <Link
+                  key={item.title}
+                  to={item.url}
+                  className={`neumorphic-nav-item px-6 py-3 rounded-2xl flex items-center gap-3 text-gray-700 hover:text-purple-600 transition-colors ${
+                    isActive ? 'active text-purple-600' : ''
+                  }`}
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span className="font-medium">{item.title}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+      </header>
+
+      {/* Mobile Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 neumorphic p-4 z-50">
+        <div className="flex justify-around">
+          {navigationItems.map((item) => {
+            const isActive = location.pathname === item.url;
+            return (
+              <Link
+                key={item.title}
+                to={item.url}
+                className={`neumorphic-nav-item p-3 rounded-xl flex flex-col items-center gap-1 text-gray-600 transition-colors ${
+                  isActive ? 'active text-purple-600' : ''
+                }`}
+              >
+                <item.icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{item.title}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-4 pb-24 md:pb-8">
+        {children}
+      </main>
+    </div>
+  );
+}
