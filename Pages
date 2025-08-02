@@ -1,0 +1,239 @@
+import React, { useState, useEffect } from 'react';
+import { SongRequest } from '@/entities/SongRequest';
+import { Music, Send, Clock, CheckCircle, Play } from 'lucide-react';
+import { format } from 'date-fns';
+import { ko } from 'date-fns/locale';
+
+import NeumorphicCard from '../components/neumorphic/NeumorphicCard';
+import NeumorphicButton from '../components/neumorphic/NeumorphicButton';
+import NeumorphicInput from '../components/neumorphic/NeumorphicInput';
+import NeumorphicSelect from '../components/neumorphic/NeumorphicSelect';
+
+const genres = ["K-Pop", "발라드", "힙합", "R&B", "인디", "트롯", "락", "댄스", "기타"];
+
+const statusInfo = {
+  pending: { icon: Clock, text: "대기중", color: "text-yellow-600" },
+  approved: { icon: CheckCircle, text: "승인됨", color: "text-green-600" },
+  played: { icon: Play, text: "방송됨", color: "text-blue-600" },
+  rejected: { icon: Clock, text: "거절됨", color: "text-red-600" }
+};
+
+export default function SongRequests() {
+  const [requests, setRequests] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    artist: '',
+    song_title: '',
+    requester_name: '',
+    message: '',
+    genre: ''
+  });
+
+  useEffect(() => {
+    loadRequests();
+  }, []);
+
+  const loadRequests = async () => {
+    setIsLoading(true);
+    try {
+      const data = await SongRequest.list('-created_date', 20);
+      setRequests(data);
+    } catch (error) {
+      console.error('신청곡 로딩 실패:', error);
+    }
+    setIsLoading(false);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.artist || !formData.song_title || !formData.requester_name) {
+      alert('필수 항목을 모두 입력해주세요.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await SongRequest.create(formData);
+      setFormData({
+        artist: '',
+        song_title: '',
+        requester_name: '',
+        message: '',
+        genre: ''
+      });
+      await loadRequests();
+      alert('신청곡이 등록되었습니다!');
+    } catch (error) {
+      console.error('신청곡 등록 실패:', error);
+      alert('신청곡 등록에 실패했습니다. 다시 시도해주세요.');
+    }
+    setIsSubmitting(false);
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center mb-12">
+        <div className="neumorphic w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Music className="w-10 h-10 text-purple-600" />
+        </div>
+        <h1 className="text-4xl font-bold text-gray-800 mb-4">신청곡</h1>
+        <p className="text-lg text-gray-600">듣고 싶은 음악을 신청해보세요</p>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-8">
+        {/* Request Form */}
+        <NeumorphicCard>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+            <div className="neumorphic w-10 h-10 rounded-full flex items-center justify-center">
+              <Send className="w-5 h-5 text-purple-600" />
+            </div>
+            신청하기
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  아티스트 <span className="text-red-500">*</span>
+                </label>
+                <NeumorphicInput
+                  placeholder="아티스트 이름을 입력하세요"
+                  value={formData.artist}
+                  onChange={(e) => handleInputChange('artist', e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  곡 제목 <span className="text-red-500">*</span>
+                </label>
+                <NeumorphicInput
+                  placeholder="곡 제목을 입력하세요"
+                  value={formData.song_title}
+                  onChange={(e) => handleInputChange('song_title', e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  신청자 이름 <span className="text-red-500">*</span>
+                </label>
+                <NeumorphicInput
+                  placeholder="이름을 입력하세요"
+                  value={formData.requester_name}
+                  onChange={(e) => handleInputChange('requester_name', e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  장르
+                </label>
+                <NeumorphicSelect
+                  options={genres}
+                  value={formData.genre}
+                  onChange={(value) => handleInputChange('genre', value)}
+                  placeholder="장르 선택"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                DJ에게 메시지
+              </label>
+              <NeumorphicInput
+                multiline
+                rows={4}
+                placeholder="DJ에게 전하고 싶은 메시지를 입력하세요 (선택사항)"
+                value={formData.message}
+                onChange={(e) => handleInputChange('message', e.target.value)}
+              />
+            </div>
+
+            <NeumorphicButton
+              type="submit"
+              disabled={isSubmitting}
+              variant="primary"
+              className="w-full py-4 text-lg"
+            >
+              {isSubmitting ? '신청 중...' : '신청곡 등록하기'}
+            </NeumorphicButton>
+          </form>
+        </NeumorphicCard>
+
+        {/* Recent Requests */}
+        <NeumorphicCard>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+            <div className="neumorphic w-10 h-10 rounded-full flex items-center justify-center">
+              <Clock className="w-5 h-5 text-purple-600" />
+            </div>
+            최근 신청곡
+          </h2>
+
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {isLoading ? (
+              Array(5).fill(0).map((_, i) => (
+                <div key={i} className="neumorphic-inset rounded-2xl p-4 animate-pulse">
+                  <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-300 rounded w-3/4"></div>
+                </div>
+              ))
+            ) : requests.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                아직 신청곡이 없습니다.
+              </div>
+            ) : (
+              requests.map((request) => {
+                const StatusIcon = statusInfo[request.status]?.icon || Clock;
+                return (
+                  <div key={request.id} className="neumorphic-inset rounded-2xl p-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-800">{request.song_title}</h3>
+                        <p className="text-sm text-gray-600">{request.artist}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <StatusIcon className={`w-4 h-4 ${statusInfo[request.status]?.color || 'text-gray-500'}`} />
+                        <span className={`text-xs font-medium ${statusInfo[request.status]?.color || 'text-gray-500'}`}>
+                          {statusInfo[request.status]?.text || '대기중'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <span>{request.requester_name}</span>
+                      <span>{format(new Date(request.created_date), 'MM/dd HH:mm', { locale: ko })}</span>
+                    </div>
+                    
+                    {request.genre && (
+                      <div className="mt-2">
+                        <span className="inline-block bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs">
+                          {request.genre}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {request.message && (
+                      <div className="mt-3 p-3 bg-gray-100 bg-opacity-50 rounded-xl">
+                        <p className="text-sm text-gray-700">{request.message}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </NeumorphicCard>
+      </div>
+    </div>
+  );
+}
