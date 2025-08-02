@@ -1,0 +1,343 @@
+
+import React, { useState, useEffect } from 'react';
+import { User } from '@/entities/User';
+import { SongRequest } from '@/entities/SongRequest';
+import { Suggestion } from '@/entities/Suggestion';
+import { Settings, Music, MessageCircle, Users, BarChart3, AlertTriangle } from 'lucide-react';
+import { format } from 'date-fns'; // Removed startOfWeek, endOfWeek as they are not used in the provided logic
+import { ko } from 'date-fns/locale';
+
+import NeumorphicCard from '../components/neumorphic/NeumorphicCard';
+import NeumorphicButton from '../components/neumorphic/NeumorphicButton';
+import AnalyticsCharts from '../components/admin/AnalyticsCharts';
+
+export default function Admin() {
+  const [songRequests, setSongRequests] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [activeTab, setActiveTab] = useState('requests');
+
+  useEffect(() => {
+    const checkAuthAndLoadData = async () => {
+      setIsAuthLoading(true);
+      try {
+        const currentUser = await User.me();
+        setUser(currentUser);
+        if (currentUser.role === 'admin') {
+          await loadData();
+        }
+      } catch (error) {
+        console.error('인증 실패:', error);
+        setUser(null);
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+    checkAuthAndLoadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [requestsData, suggestionsData] = await Promise.all([
+        SongRequest.list('-created_date', 50),
+        Suggestion.list('-created_date', 50)
+      ]);
+      setSongRequests(requestsData);
+      setSuggestions(suggestionsData);
+    } catch (error) {
+      console.error('데이터 로딩 실패:', error);
+    }
+    setIsLoading(false);
+  };
+
+  const updateRequestStatus = async (requestId, newStatus) => {
+    try {
+      const request = songRequests.find(r => r.id === requestId);
+      await SongRequest.update(requestId, { ...request, status: newStatus });
+      await loadData();
+    } catch (error) {
+      console.error('상태 업데이트 실패:', error);
+    }
+  };
+
+  const updateSuggestionStatus = async (suggestionId, newStatus) => {
+    try {
+      const suggestion = suggestions.find(s => s.id === suggestionId);
+      await Suggestion.update(suggestionId, { ...suggestion, status: newStatus });
+      await loadData();
+    } catch (error) {
+      console.error('상태 업데이트 실패:', error);
+    }
+  };
+
+  const getStatsAndChartData = () => {
+    const pendingRequests = songRequests.filter(r => r.status === 'pending').length;
+    const playedRequests = songRequests.filter(r => r.status === 'played').length;
+    const pendingSuggestions = suggestions.filter(s => s.status === '접수').length;
+    const completedSuggestions = suggestions.filter(s => s.status === '완료').length;
+    
+    // Genre Chart Data
+    const genreCounts = songRequests.reduce((acc, req) => {
+      if (req.genre) {
+        acc[req.genre] = (acc[req.genre] || 0) + 1;
+      }
+      return acc;
+    }, {});
+    const genreChartData = Object.entries(genreCounts)
+      .map(([name, count]) => ({ name, '신청 수': count }))
+      .sort((a, b) => b['신청 수'] - a['신청 수']);
+
+    // Activity Over Time Chart Data
+    const activityByDate = [...songRequests, ...suggestions].reduce((acc, item) => {
+        const dateKey = format(new Date(item.created_date), 'yyyy-MM-dd'); // Key for internal grouping
+        if (!acc[dateKey]) {
+            acc[dateKey] = { date: format(new Date(item.created_date), 'MM-dd'), '신청곡': 0, '건의사항': 0 };
+        }
+        if (item.song_title) { // it's a song request
+            acc[dateKey]['신청곡'] += 1;
+        } else if (item.title) { // it's a suggestion (assuming suggestions have 'title' and not 'song_title')
+            acc[dateKey]['건의사항'] += 1;
+        }
+        return acc;
+    }, {});
+    const activityChartData = Object.values(activityByDate).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-14); // Last 14 days
+
+    return {
+      pendingRequests,
+      playedRequests,
+      pendingSuggestions,
+      completedSuggestions,
+      totalRequests: songRequests.length,
+      totalSuggestions: suggestions.length,
+      genreChartData,
+      activityChartData
+    };
+  };
+
+  const { genreChartData, activityChartData, ...stats } = getStatsAndChartData();
+
+  if (isAuthLoading) {
+    return (
+      <NeumorphicCard className="text-center p-12">
+        <h2 className="text-xl font-semibold text-gray-700">권한을 확인하는 중입니다...</h2>
+      </NeumorphicCard>
+    );
+  }
+
+  if (user?.role !== 'admin') {
+    return (
+      <NeumorphicCard className="text-center p-12">
+        <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-6" />
+        <h2 className="text-3xl font-bold text-gray-800">접근 권한 없음</h2>
+        <p className="text-gray-600 mt-4">이 페이지는 관리자만 접근할 수 있습니다.</p>
+      </NeumorphicCard>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center mb-12">
+        <div className="neumorphic w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Settings className="w-10 h-10 text-purple-600" />
+        </div>
+        <h1 className="text-4xl font-bold text-gray-800 mb-4">관리자 대시보드</h1>
+        <p className="text-lg text-gray-600">신청곡과 건의사항을 관리하세요</p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <NeumorphicCard className="text-center">
+          <div className="neumorphic w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Music className="w-6 h-6 text-blue-600" />
+          </div>
+          <div className="text-2xl font-bold text-gray-800">{stats.pendingRequests}</div>
+          <div className="text-sm text-gray-600">대기중 신청곡</div>
+        </NeumorphicCard>
+
+        <NeumorphicCard className="text-center">
+          <div className="neumorphic w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+            <BarChart3 className="w-6 h-6 text-green-600" />
+          </div>
+          <div className="text-2xl font-bold text-gray-800">{stats.playedRequests}</div>
+          <div className="text-sm text-gray-600">방송된 신청곡</div>
+        </NeumorphicCard>
+
+        <NeumorphicCard className="text-center">
+          <div className="neumorphic w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+            <MessageCircle className="w-6 h-6 text-orange-600" />
+          </div>
+          <div className="text-2xl font-bold text-gray-800">{stats.pendingSuggestions}</div>
+          <div className="text-sm text-gray-600">미처리 건의사항</div>
+        </NeumorphicCard>
+
+        <NeumorphicCard className="text-center">
+          <div className="neumorphic w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Users className="w-6 h-6 text-purple-600" />
+          </div>
+          <div className="text-2xl font-bold text-gray-800">{stats.totalRequests + stats.totalSuggestions}</div>
+          <div className="text-sm text-gray-600">총 활동</div>
+        </NeumorphicCard>
+      </div>
+
+      {/* Analytics Charts */}
+      <AnalyticsCharts genreData={genreChartData} activityData={activityChartData} />
+
+      {/* Tab Navigation */}
+      <div className="flex gap-4 mb-6">
+        <NeumorphicButton
+          onClick={() => setActiveTab('requests')}
+          variant={activeTab === 'requests' ? 'primary' : 'default'}
+          className={activeTab === 'requests' ? 'neumorphic-inset' : ''}
+        >
+          신청곡 관리
+        </NeumorphicButton>
+        <NeumorphicButton
+          onClick={() => setActiveTab('suggestions')}
+          variant={activeTab === 'suggestions' ? 'primary' : 'default'}
+          className={activeTab === 'suggestions' ? 'neumorphic-inset' : ''}
+        >
+          건의사항 관리
+        </NeumorphicButton>
+      </div>
+
+      {/* Content */}
+      {activeTab === 'requests' && (
+        <NeumorphicCard>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">신청곡 관리</h2>
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {isLoading ? (
+              Array(5).fill(0).map((_, i) => (
+                <div key={i} className="neumorphic-inset rounded-2xl p-4 animate-pulse">
+                  <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-300 rounded w-3/4"></div>
+                </div>
+              ))
+            ) : songRequests.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                신청곡이 없습니다.
+              </div>
+            ) : (
+              songRequests.map((request) => (
+                <div key={request.id} className="neumorphic-inset rounded-2xl p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-800">{request.song_title}</h3>
+                      <p className="text-sm text-gray-600">{request.artist}</p>
+                      <p className="text-xs text-gray-500 mt-1">신청자: {request.requester_name}</p>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {format(new Date(request.created_date), 'MM/dd HH:mm', { locale: ko })}
+                    </div>
+                  </div>
+
+                  {request.message && (
+                    <div className="mb-3 p-3 bg-gray-100 bg-opacity-50 rounded-xl">
+                      <p className="text-sm text-gray-700">{request.message}</p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <NeumorphicButton
+                      onClick={() => updateRequestStatus(request.id, 'approved')}
+                      variant="success"
+                      className="text-xs px-3 py-1"
+                      disabled={request.status === 'approved'}
+                    >
+                      승인
+                    </NeumorphicButton>
+                    <NeumorphicButton
+                      onClick={() => updateRequestStatus(request.id, 'played')}
+                      variant="primary"
+                      className="text-xs px-3 py-1"
+                      disabled={request.status === 'played'}
+                    >
+                      방송됨
+                    </NeumorphicButton>
+                    <NeumorphicButton
+                      onClick={() => updateRequestStatus(request.id, 'rejected')}
+                      variant="danger"
+                      className="text-xs px-3 py-1"
+                      disabled={request.status === 'rejected'}
+                    >
+                      거절
+                    </NeumorphicButton>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </NeumorphicCard>
+      )}
+
+      {activeTab === 'suggestions' && (
+        <NeumorphicCard>
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">건의사항 관리</h2>
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {isLoading ? (
+              Array(5).fill(0).map((_, i) => (
+                <div key={i} className="neumorphic-inset rounded-2xl p-4 animate-pulse">
+                  <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-300 rounded w-3/4 mb-2"></div>
+                  <div className="h-8 bg-gray-300 rounded"></div>
+                </div>
+              ))
+            ) : suggestions.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                건의사항이 없습니다.
+              </div>
+            ) : (
+              suggestions.map((suggestion) => (
+                <div key={suggestion.id} className="neumorphic-inset rounded-2xl p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-800">{suggestion.title}</h3>
+                      <p className="text-xs text-gray-500 mt-1">제출자: {suggestion.submitter_name}</p>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {format(new Date(suggestion.created_date), 'MM/dd HH:mm', { locale: ko })}
+                    </div>
+                  </div>
+
+                  <div className="mb-3 p-3 bg-gray-100 bg-opacity-50 rounded-xl">
+                    <p className="text-sm text-gray-700">{suggestion.content}</p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <NeumorphicButton
+                      onClick={() => updateSuggestionStatus(suggestion.id, '검토중')}
+                      variant="primary"
+                      className="text-xs px-3 py-1"
+                      disabled={suggestion.status === '검토중'}
+                    >
+                      검토중
+                    </NeumorphicButton>
+                    <NeumorphicButton
+                      onClick={() => updateSuggestionStatus(suggestion.id, '완료')}
+                      variant="success"
+                      className="text-xs px-3 py-1"
+                      disabled={suggestion.status === '완료'}
+                    >
+                      완료
+                    </NeumorphicButton>
+                    <NeumorphicButton
+                      onClick={() => updateSuggestionStatus(suggestion.id, '보류')}
+                      variant="danger"
+                      className="text-xs px-3 py-1"
+                      disabled={suggestion.status === '보류'}
+                    >
+                      보류
+                    </NeumorphicButton>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </NeumorphicCard>
+      )}
+    </div>
+  );
+}
