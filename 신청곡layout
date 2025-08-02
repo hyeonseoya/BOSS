@@ -1,0 +1,53 @@
+{
+  "name": "SongRequest",
+  "type": "object",
+  "properties": {
+    "artist": {
+      "type": "string",
+      "description": "아티스트 이름"
+    },
+    "song_title": {
+      "type": "string",
+      "description": "곡 제목"
+    },
+    "requester_name": {
+      "type": "string",
+      "description": "신청자 이름"
+    },
+    "message": {
+      "type": "string",
+      "description": "DJ에게 전하고 싶은 메시지"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "played",
+        "rejected"
+      ],
+      "default": "pending",
+      "description": "신청곡 상태"
+    },
+    "genre": {
+      "type": "string",
+      "enum": [
+        "K-Pop",
+        "발라드",
+        "힙합",
+        "R&B",
+        "인디",
+        "트롯",
+        "락",
+        "댄스",
+        "기타"
+      ],
+      "description": "음악 장르"
+    }
+  },
+  "required": [
+    "artist",
+    "song_title",
+    "requester_name"
+  ]
+}
