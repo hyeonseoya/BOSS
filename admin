@@ -1,0 +1,63 @@
+import React from 'react';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import NeumorphicCard from '../neumorphic/NeumorphicCard';
+
+export default function AnalyticsCharts({ genreData, activityData }) {
+    const CustomTooltip = ({ active, payload, label }) => {
+      if (active && payload && payload.length) {
+        return (
+          <div className="neumorphic rounded-2xl p-4">
+            <p className="label font-semibold text-gray-800">{`${label}`}</p>
+            {payload.map((p, i) => (
+              <p key={i} style={{ color: p.color }}>{`${p.name} : ${p.value}`}</p>
+            ))}
+          </div>
+        );
+      }
+      return null;
+    };
+    
+    return (
+        <div className="grid lg:grid-cols-2 gap-8 mb-8">
+            <NeumorphicCard>
+                <h3 className="text-xl font-bold text-gray-800 mb-6">장르별 신청곡</h3>
+                {genreData && genreData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={genreData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0, 0, 0, 0.1)" />
+                          <XAxis dataKey="name" stroke="#666" />
+                          <YAxis stroke="#666" allowDecimals={false} />
+                          <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(163, 177, 198, 0.1)'}} />
+                          <Legend />
+                          <Bar dataKey="신청 수" fill="#8884d8" radius={[10, 10, 0, 0]} />
+                      </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-gray-500">
+                    신청곡 데이터가 부족합니다.
+                  </div>
+                )}
+            </NeumorphicCard>
+            <NeumorphicCard>
+                <h3 className="text-xl font-bold text-gray-800 mb-6">일별 활동량</h3>
+                {activityData && activityData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={activityData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(0, 0, 0, 0.1)" />
+                          <XAxis dataKey="date" stroke="#666" />
+                          <YAxis stroke="#666" allowDecimals={false} />
+                          <Tooltip content={<CustomTooltip />} cursor={{stroke: 'rgba(163, 177, 198, 0.3)', strokeWidth: 2}} />
+                          <Legend />
+                          <Line type="monotone" dataKey="신청곡" stroke="#8884d8" strokeWidth={2} activeDot={{ r: 8 }} />
+                          <Line type="monotone" dataKey="건의사항" stroke="#82ca9d" strokeWidth={2} activeDot={{ r: 8 }}/>
+                      </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[300px] text-gray-500">
+                    활동 데이터가 부족합니다.
+                  </div>
+                )}
+            </NeumorphicCard>
+        </div>
+    );
+}
